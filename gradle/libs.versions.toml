@@ -1,0 +1,10 @@
+[versions]
+lavalink-api = "4.2.1"
+lavalink-server = "4.2.2"
+lavaplayer = "2.2.3"
+kotlin = "2.1.20"
+
+[plugins]
+lavalink = { id = "dev.arbjerg.lavalink.gradle-plugin", version = "1.0.15" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
