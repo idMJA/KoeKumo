@@ -81,10 +81,23 @@ class SoundCloudClient(private val config: KoeKumoConfig) {
     }
 
     fun resolve(http: HttpInterface, url: String): JSONObject? {
+        val normalizedUrl = normalizeUrl(http, url)
         val cid = getClientId(http)
-        val expandedUrl = expandShortUrl(http, url)
-        val target = "$apiBase/resolve?url=${URLEncoder.encode(expandedUrl, StandardCharsets.UTF_8)}&client_id=$cid"
-        return getJson(http, target)
+        val target = "$apiBase/resolve?url=${URLEncoder.encode(normalizedUrl, StandardCharsets.UTF_8)}&client_id=$cid"
+        val firstAttempt = getJson(http, target)
+        if (firstAttempt != null) return firstAttempt
+
+        // If SoundCloud rotated or invalidated client_id, invalidate cache and retry once
+        log.warn("SoundCloud resolve returned null/401/404, invalidating cached client_id and retrying...")
+        cachedClientId = null
+        val freshCid = getClientId(http)
+        val retryTarget = "$apiBase/resolve?url=${URLEncoder.encode(normalizedUrl, StandardCharsets.UTF_8)}&client_id=$freshCid"
+        return getJson(http, retryTarget)
+    }
+
+    private fun normalizeUrl(http: HttpInterface, rawUrl: String): String {
+        val expanded = expandShortUrl(http, rawUrl)
+        return expanded.replace("://m.soundcloud.com/", "://soundcloud.com/")
     }
 
     fun search(http: HttpInterface, query: String, limit: Int = 10): List<JSONObject> {

@@ -26,6 +26,13 @@ class KoeKumoIntegrationTest {
         println("Resolved Title from short URL: ${json?.optString("title")}")
         assertTrue(json?.optString("title")?.isNotBlank() == true)
 
+        // Test mobile URL normalization: https://m.soundcloud.com/shiftku69/koko-de-iketeru-mary-jon
+        val mobileUrl = "https://m.soundcloud.com/shiftku69/koko-de-iketeru-mary-jon"
+        val mobileJson = client.resolve(http, mobileUrl)
+        assertNotNull(mobileJson)
+        println("Resolved Title from mobile URL: ${mobileJson?.optString("title")}")
+        assertTrue(mobileJson?.optString("title")?.isNotBlank() == true)
+
         val streamUrl = client.getStreamUrl(http, json!!)
         assertNotNull(streamUrl)
         println("Resolved HLS Stream URL: $streamUrl")
