@@ -115,37 +115,37 @@ class SoundCloudClient(private val config: KoeKumoConfig) {
         return list
     }
 
-    fun getStreamUrl(http: HttpInterface, trackJson: JSONObject): String? {
-        val cid = getClientId(http)
-        val media = trackJson.optJSONObject("media") ?: return null
-        val transcodings = media.optJSONArray("transcodings") ?: return null
+    // Full-length, non-DRM fMP4 HLS only; DRM tracks expose just /preview/ MP3 HLS.
+    fun findPlayableHlsTranscoding(trackJson: JSONObject): JSONObject? {
+        val transcodings = trackJson.optJSONObject("media")?.optJSONArray("transcodings") ?: return null
 
-        var chosenUrl: String? = null
         for (i in 0 until transcodings.length()) {
-            val t = transcodings.getJSONObject(i)
-            val format = t.optJSONObject("format")
-            val protocol = format?.optString("protocol")
-            val mimeType = format?.optString("mime_type")
+            val transcoding = transcodings.optJSONObject(i) ?: continue
+            if (!isPlayableHlsTranscoding(transcoding)) continue
 
-            if ("hls".equals(protocol, ignoreCase = true) && mimeType?.contains("audio/mp4") == true) {
-                chosenUrl = t.optString("url")
-                break
-            }
+            val mimeType = transcoding.optJSONObject("format")?.optString("mime_type") ?: ""
+            if (mimeType.contains("audio/mp4", ignoreCase = true)) return transcoding
         }
+        return null
+    }
 
-        if (chosenUrl == null) {
-            for (i in 0 until transcodings.length()) {
-                val t = transcodings.getJSONObject(i)
-                if ("hls".equals(t.optJSONObject("format")?.optString("protocol"), ignoreCase = true)) {
-                    chosenUrl = t.optString("url")
-                    break
-                }
-            }
-        }
+    private fun isPlayableHlsTranscoding(transcoding: JSONObject): Boolean {
+        if (transcoding.optBoolean("drm", false)) return false
+        if (!cleanString(transcoding.optString("encryption_type")).isNullOrEmpty()) return false
 
-        if (chosenUrl.isNullOrBlank()) return null
+        val url = cleanString(transcoding.optString("url")) ?: return false
+        if (url.contains("/preview/", ignoreCase = true)) return false
 
-        val streamInfoReq = "$chosenUrl?client_id=$cid"
+        val protocol = transcoding.optJSONObject("format")?.optString("protocol") ?: ""
+        return "hls".equals(protocol, ignoreCase = true)
+    }
+
+    private fun cleanString(value: String): String? = value.takeIf { it.isNotBlank() && it != "null" }
+
+    fun getStreamUrl(http: HttpInterface, trackJson: JSONObject): String? {
+        val transcoding = findPlayableHlsTranscoding(trackJson) ?: return null
+        val cid = getClientId(http)
+        val streamInfoReq = "${transcoding.optString("url")}?client_id=$cid"
         val streamData = getJson(http, streamInfoReq) ?: return null
         return streamData.optString("url").takeIf { it.isNotBlank() }
     }

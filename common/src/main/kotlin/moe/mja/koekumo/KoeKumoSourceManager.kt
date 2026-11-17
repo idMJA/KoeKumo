@@ -94,7 +94,9 @@ class KoeKumoSourceManager(
         }
     }
 
-    private fun parseTrack(json: JSONObject): AudioTrack? {
+    internal fun parseTrack(json: JSONObject): AudioTrack? {
+        if (client.findPlayableHlsTranscoding(json) == null) return null
+
         val id = json.opt("id")?.toString() ?: return null
         val title = json.optString("title", "Unknown Title")
         val user = json.optJSONObject("user")
