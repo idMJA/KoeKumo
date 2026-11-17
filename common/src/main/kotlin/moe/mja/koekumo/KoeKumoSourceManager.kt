@@ -95,7 +95,10 @@ class KoeKumoSourceManager(
     }
 
     internal fun parseTrack(json: JSONObject): AudioTrack? {
-        if (client.findPlayableHlsTranscoding(json) == null) return null
+        if (client.findPlayableHlsTranscoding(json) == null) {
+            log.debug("Skipping SoundCloud track without playable HLS: {} ({})", json.optString("title"), json.opt("id"))
+            return null
+        }
 
         val id = json.opt("id")?.toString() ?: return null
         val title = json.optString("title", "Unknown Title")
